@@ -16,7 +16,7 @@
 //   WARMUP          V8/JIT warm-up before measurement         default 10s
 import http from 'k6/http';
 import { sleep } from 'k6';
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { textSummary } from './lib/k6-summary.js';
 import { RISKS, CELLS } from './lib/metrics.js';
 import { api2Attack, api2Benign } from './attacks/api2_auth.js';
 import { bolaAttack, bflaAttack, authzBenign } from './attacks/api1_api5_authz.js';
@@ -34,6 +34,9 @@ const SCENARIO = __ENV.SCENARIO || 'S?';
 
 export const options = {
   discardResponseBodies: true,
+  // k6 defaults stop at p(95); the elbow analysis keys off p99, so ask for it
+  // explicitly or handleSummary writes p99_ms: null and the fit degrades to NaN.
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   scenarios: {
     warmup: {
       executor: 'constant-arrival-rate',
