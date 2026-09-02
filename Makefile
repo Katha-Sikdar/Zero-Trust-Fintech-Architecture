@@ -9,7 +9,7 @@ COMPOSE  := docker compose -f compose/docker-compose.yml
 IMAGES   := node:20-alpine nginx:1.27-alpine prom/prometheus:v2.54.1 \
             envoyproxy/envoy:v1.31-latest openpolicyagent/opa:0.68.0-envoy
 
-.PHONY: help demo keys tokens images analyse clean down up-% run-% sweep-% k8s-% all-compose
+.PHONY: help demo keys tokens images istioctl analyse clean down up-% run-% sweep-% k8s-% all-compose
 
 help:
 	@echo "Targets:"
@@ -23,7 +23,8 @@ help:
 	@echo "  make all-compose     Run every scenario S0..S6 (+ experiment arms) on Compose"
 	@echo "  make down            Tear down any running Compose stack"
 	@echo "  make analyse         Ingest results/ and produce stats, tables, figures"
-	@echo "  make k8s-setup       Install Istio + namespace + keys (needs kubectl/istioctl)"
+	@echo "  make istioctl        Fetch the pinned istioctl into tools/"
+	@echo "  make k8s-setup       Install Istio + namespace + keys (needs kubectl + a cluster)"
 	@echo "  make k8s-S5 N=30     Apply overlay S5 on the cluster and run the sweep"
 	@echo "  make clean           Remove generated results"
 
@@ -82,7 +83,10 @@ all-compose: tokens
 	$(MAKE) analyse
 
 # ---- Kubernetes + Istio (variable/cloud testbed) ----
-k8s-setup:
+istioctl:
+	scripts/get-istioctl.sh
+
+k8s-setup: istioctl
 	scripts/k8s-setup.sh
 
 k8s-%:

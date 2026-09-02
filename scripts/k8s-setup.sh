@@ -4,10 +4,26 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# istioctl is not vendored. Prefer one on PATH; otherwise use the pinned copy in
+# tools/, fetching it if needed so this script is self-sufficient.
+ISTIO_VERSION="${ISTIO_VERSION:-1.28.0}"
+ISTIOCTL="$(command -v istioctl 2>/dev/null || true)"
+if [ -z "$ISTIOCTL" ]; then
+  [ -x "tools/istio-${ISTIO_VERSION}/bin/istioctl" ] || scripts/get-istioctl.sh
+  ISTIOCTL="$PWD/tools/istio-${ISTIO_VERSION}/bin/istioctl"
+fi
+echo "using istioctl: $ISTIOCTL ($("$ISTIOCTL" version --remote=false 2>/dev/null))"
+
+# Fail here rather than half-way through the install if kubectl has no cluster.
+kubectl cluster-info >/dev/null 2>&1 || {
+  echo "kubectl cannot reach a cluster (context: $(kubectl config current-context 2>/dev/null || echo none))." >&2
+  echo "Start Docker Desktop Kubernetes, kind, or minikube first." >&2; exit 1; }
+echo "cluster: $(kubectl config current-context)"
+
 echo "== 1. install Istio with the OPA ext_authz provider =="
-istioctl install -y -f k8s/istio/istio-extension-provider.yaml \
+"$ISTIOCTL" install -y -f k8s/istio/istio-extension-provider.yaml \
   --set profile=default || {
-    echo "istioctl install failed — install Istio >=1.20 and retry"; exit 1; }
+    echo "istioctl install failed — see the error above"; exit 1; }
 
 echo "== 2. namespace + sidecar injection =="
 kubectl apply -f k8s/base/namespace.yaml

@@ -14,3 +14,4 @@ results/figures/
 results/lambda_star.txt
 !results/example-output/**
 !docs/**
+tools/
