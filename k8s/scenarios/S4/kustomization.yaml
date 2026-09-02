@@ -4,7 +4,7 @@ namespace: zta
 resources:
   - ../../base
   - ../../istio/peer-authentication.yaml
-  - ../../istio/request-authentication.yaml
+  - ../../istio/request-authentication.rendered.yaml   # generated: scripts/render-k8s-jwks.sh
   - ../../istio/authz-require-jwt.yaml
 configMapGenerator:
   - name: app-config

@@ -15,3 +15,4 @@ results/lambda_star.txt
 !results/example-output/**
 !docs/**
 tools/
+k8s/istio/request-authentication.rendered.yaml

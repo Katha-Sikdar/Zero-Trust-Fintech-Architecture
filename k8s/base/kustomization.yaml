@@ -4,5 +4,17 @@ namespace: zta
 resources:
   - namespace.yaml
   - app.yaml
-  - config.yaml
   - gateway.yaml
+# app-config must be GENERATED here, not listed as a plain resource: the scenario
+# overlays layer on it with `behavior: merge`, and kustomize can only merge a
+# generator into another generator. (Values moved here from base/config.yaml.)
+configMapGenerator:
+  - name: app-config
+    literals:
+      - JWT_MODE=delegated        # in the mesh, Istio validates JWTs by default
+      - AUTH_MODE=none
+      - JWT_ALG=RS256
+      - OFFLOAD_CRYPTO=false
+      - BUSINESS_CPU_MS=2
+      - SCENARIO=k8s-base
+generatorOptions: { disableNameSuffixHash: true }

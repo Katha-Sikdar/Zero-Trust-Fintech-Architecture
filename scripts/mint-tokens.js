@@ -28,15 +28,21 @@ const rogue = crypto.generateKeyPairSync('rsa', {
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const now = Math.floor(Date.now() / 1000);
 
+// Benign tokens must outlive the whole sweep. A full run is 5 load levels x N
+// trials x ~70s (~2.5h at N=30); with a short TTL every benign request past the
+// expiry is denied "jwt expired" and scored as a false positive, silently
+// destroying the confusion matrices. Override with TOKEN_TTL if needed.
+const TTL = process.env.TOKEN_TTL || '24h';
+
 function valid(sub, role, alg) {
   const key = alg === 'ES256' ? ecPriv : rsaPriv;
   const kid = alg === 'ES256' ? 'test-key-2' : 'test-key-1';
   return jwt.sign({ sub, role, iss: 'zta-testbed' }, key,
-    { algorithm: alg, keyid: kid, expiresIn: '15m' });
+    { algorithm: alg, keyid: kid, expiresIn: TTL });
 }
 
 const out = {
-  meta: { minted: now, seed: 42 },
+  meta: { minted: now, seed: 42, ttl: TTL },
 
   // --- benign principals (used by benign traffic + as the "own resource" case)
   valid_rs256: {},
@@ -52,7 +58,7 @@ const out = {
     // key confusion: RSA public key used as an HS256 secret. Rejected because
     // the server pins RS256/ES256 and never treats the public key as a secret.
     key_confusion: jwt.sign({ sub: 'u000', role: 'admin', iss: 'zta-testbed' },
-                            rsaPub, { algorithm: 'HS256', expiresIn: '15m' }),
+                            rsaPub, { algorithm: 'HS256', expiresIn: TTL }),
 
     // expired token (valid signature, exp in the past)
     expired: jwt.sign({ sub: 'u001', role: 'customer', iss: 'zta-testbed' },
@@ -60,7 +66,7 @@ const out = {
 
     // signed by an untrusted key
     wrong_signature: jwt.sign({ sub: 'u000', role: 'admin', iss: 'zta-testbed' },
-                              rogue.privateKey, { algorithm: 'RS256', expiresIn: '15m' }),
+                              rogue.privateKey, { algorithm: 'RS256', expiresIn: TTL }),
 
     // tampered payload on a real token (signature no longer matches)
     tampered: (() => {
@@ -82,4 +88,5 @@ for (let i = 0; i < 11; i++) {
 const dest = path.join(__dirname, '..', 'loadgen', 'tokens.json');
 fs.writeFileSync(dest, JSON.stringify(out, null, 2));
 console.log('wrote', dest, '-', Object.keys(out.attacks).length, 'attack tokens,',
-            Object.keys(out.valid_rs256).length, 'benign principals');
+            Object.keys(out.valid_rs256).length, 'benign principals,',
+            'benign TTL', TTL);

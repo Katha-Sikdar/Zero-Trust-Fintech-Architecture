@@ -14,6 +14,10 @@ spec:
       containers:
         - name: api
           image: zta-fintech-api:latest      # push to ECR; overlays may pin a tag
+          # `:latest` defaults to pullPolicy Always, which fails on a local
+          # cluster (docker-desktop/kind) where the image is built locally and
+          # never pushed. IfNotPresent still pulls when the image is absent.
+          imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 8080 }]
           envFrom:
             - configMapRef: { name: app-config }
