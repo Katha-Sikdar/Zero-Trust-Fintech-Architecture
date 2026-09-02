@@ -1,0 +1,67 @@
+# ZTA FinTech testbed — deterministic control environment (proposal Section 6:
+# local Docker Compose, Apple M4). One file, seven scenarios: behaviour is
+# selected by an --env-file from compose/scenarios/. Optional services (envoy,
+# opa) are profile-gated; COMPOSE_PROFILES is set inside each env-file.
+#
+#   docker compose --env-file compose/scenarios/S5.env -f compose/docker-compose.yml up -d --build
+#
+name: zta-fintech
+
+services:
+  app:
+    build: { context: ../app }
+    image: zta-fintech-api:latest
+    environment:
+      JWT_MODE: ${APP_JWT_MODE:-none}
+      AUTH_MODE: ${APP_AUTH_MODE:-none}
+      JWT_ALG: ${APP_JWT_ALG:-RS256}
+      OFFLOAD_CRYPTO: ${APP_OFFLOAD:-false}
+      BUSINESS_CPU_MS: ${APP_BUSINESS_CPU_MS:-2}
+      SCENARIO: ${SCENARIO:-S?}
+    volumes:
+      - ../app/keys:/app/keys:ro
+    expose: ["8080"]
+
+  gateway:
+    image: nginx:1.27-alpine
+    depends_on: [app]
+    environment:
+      MESH_UPSTREAM: ${MESH_UPSTREAM:-app:8080}
+      NGINX_RATE: ${NGINX_RATE:-100000}
+      NGINX_BURST: ${NGINX_BURST:-400}
+    volumes:
+      - ./gateway-templates:/etc/nginx/templates:ro
+    ports:
+      - "8081:8081"
+
+  envoy:
+    image: envoyproxy/envoy:v1.31-latest
+    profiles: ["S4", "S5", "S6", "S6fo", "S3off"]
+    depends_on: [app]
+    command: ["-c", "/etc/envoy/${ENVOY_CONFIG:-envoy-jwt.yaml}", "--service-cluster", "sidecar"]
+    volumes:
+      - ../envoy:/etc/envoy:ro
+    expose: ["8000", "9901"]
+
+  opa:
+    image: openpolicyagent/opa:0.68.0-envoy
+    profiles: ["S5", "S6", "S6fo"]
+    command:
+      - "run"
+      - "--server"
+      - "--config-file=/config/opa-envoy-config.yaml"
+      - "--addr=0.0.0.0:8181"
+      - "--diagnostic-addr=0.0.0.0:8282"
+      - "/policy/authz.rego"
+    volumes:
+      - ../policy:/policy:ro
+      - ../policy:/config:ro
+    expose: ["9191", "8181"]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    depends_on: [app]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"

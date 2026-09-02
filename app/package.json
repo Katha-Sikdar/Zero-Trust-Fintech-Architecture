@@ -1,0 +1,16 @@
+{
+  "name": "zta-fintech-api",
+  "version": "1.0.0",
+  "description": "Vulnerable-by-configuration FinTech API target for the ZTA enforcement-placement study",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "keys": "node src/genkeys.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "prom-client": "^15.1.3"
+  }
+}

@@ -1,0 +1,86 @@
+# Standalone Envoy sidecar — Scenario S5/S6 (JWT validation + OPA authorization).
+# failure_mode_allow=true: when the OPA ext_authz call times out or the pool
+# saturates, admit (true=true, the A10 fail-OPEN hazard) or reject
+# (true=false, fail-CLOSED). RQ5 measures block rate across this switch.
+admin:
+  address: { socket_address: { address: 0.0.0.0, port_value: 9901 } }
+static_resources:
+  listeners:
+  - name: ingress
+    address: { socket_address: { address: 0.0.0.0, port_value: 8000 } }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          route_config:
+            name: local
+            virtual_hosts:
+            - name: app
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/" }
+                route: { cluster: app, timeout: 30s }
+          http_filters:
+          - name: envoy.filters.http.jwt_authn
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+              providers:
+                local:
+                  issuer: zta-testbed
+                  forward: true
+                  forward_payload_header: x-jwt-payload
+                  local_jwks: { filename: /etc/envoy/jwks.json }
+              rules:
+              - match: { prefix: "/health" }
+              - match: { prefix: "/metrics" }
+              - match: { prefix: "/" }
+                requires: { provider_name: local }
+          - name: envoy.filters.http.ext_authz
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+              transport_api_version: V3
+              failure_mode_allow: true
+              with_request_body:
+                max_request_bytes: 8192
+                allow_partial_message: true
+              grpc_service:
+                envoy_grpc: { cluster_name: opa }
+                timeout: 0.25s
+          - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+  - name: app
+    type: STRICT_DNS
+    connect_timeout: 1s
+    load_assignment:
+      cluster_name: app
+      endpoints:
+      - lb_endpoints:
+        - endpoint: { address: { socket_address: { address: app, port_value: 8080 } } }
+    circuit_breakers:
+      thresholds:
+      - priority: DEFAULT
+        max_connections: 256
+        max_pending_requests: 256
+        max_requests: 256
+  - name: opa
+    type: STRICT_DNS
+    connect_timeout: 0.25s
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config: { http2_protocol_options: {} }
+    load_assignment:
+      cluster_name: opa
+      endpoints:
+      - lb_endpoints:
+        - endpoint: { address: { socket_address: { address: opa, port_value: 9191 } } }
+    circuit_breakers:
+      thresholds:
+      - priority: DEFAULT
+        max_connections: 64
+        max_pending_requests: 64
+        max_requests: 64

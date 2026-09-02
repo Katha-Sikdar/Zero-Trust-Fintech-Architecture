@@ -1,0 +1,20 @@
+# nginx gateway (PEP-1). ${MESH_UPSTREAM} and ${NGINX_RATE} are substituted from
+# the scenario env-file at container start (official nginx envsubst). Runtime
+# nginx vars keep their $ and are left untouched.
+limit_req_zone $binary_remote_addr zone=api:10m rate=${NGINX_RATE}r/s;
+limit_req_status 429;
+upstream mesh { server ${MESH_UPSTREAM}; keepalive 128; }
+
+server {
+    listen 8081;                 # plaintext (deterministic latency measurement)
+    location /health  { proxy_pass http://mesh; }
+    location /metrics { proxy_pass http://mesh; }
+    location / {
+        limit_req zone=api burst=${NGINX_BURST} nodelay;
+        proxy_pass http://mesh;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+    }
+}

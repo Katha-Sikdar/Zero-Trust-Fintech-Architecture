@@ -1,0 +1,16 @@
+# generated artefacts
+app/node_modules/
+app/keys/*.pem
+app/keys/hmac.key
+envoy/jwks.json
+loadgen/tokens.json
+gateway/tls/
+gateway/nginx.rendered.conf
+results/summary_*.json
+results/tidy_*.csv
+results/*.md
+results/*.csv
+results/figures/
+results/lambda_star.txt
+!results/example-output/**
+!docs/**

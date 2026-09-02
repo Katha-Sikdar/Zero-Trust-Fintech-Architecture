@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: zta
+data:
+  JWT_MODE: "delegated"     # in the mesh, Istio validates JWTs by default
+  AUTH_MODE: "none"
+  JWT_ALG: "RS256"
+  OFFLOAD_CRYPTO: "false"
+  BUSINESS_CPU_MS: "2"
+  SCENARIO: "k8s-base"

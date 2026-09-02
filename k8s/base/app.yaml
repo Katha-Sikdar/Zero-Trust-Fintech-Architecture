@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fintech-api
+  namespace: zta
+  labels: { app: fintech-api }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: fintech-api } }
+  template:
+    metadata:
+      labels: { app: fintech-api }
+    spec:
+      containers:
+        - name: api
+          image: zta-fintech-api:latest      # push to ECR; overlays may pin a tag
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: app-config }
+          volumeMounts:
+            - { name: keys, mountPath: /app/keys, readOnly: true }
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 3
+          resources:
+            requests: { cpu: "500m", memory: "256Mi" }
+            limits:   { cpu: "1000m", memory: "512Mi" }
+      volumes:
+        - name: keys
+          secret: { secretName: jwt-keys }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fintech-api
+  namespace: zta
+spec:
+  selector: { app: fintech-api }
+  ports: [{ name: http, port: 8080, targetPort: 8080 }]

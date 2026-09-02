@@ -1,0 +1,7 @@
+# Mesh-wide mTLS mode. STRICT = every in-mesh call must be mutually authenticated
+# (Scenario S2, S5, S6). Switch to PERMISSIVE for the API8 misconfiguration arm.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: zta }
+spec:
+  mtls: { mode: STRICT }

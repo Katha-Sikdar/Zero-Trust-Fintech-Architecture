@@ -1,0 +1,12 @@
+# Deny any request without a validated principal (fail-closed authentication).
+# Paired with RequestAuthentication: RequestAuthentication only validates a token
+# IF present; this policy makes a token mandatory.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: require-jwt, namespace: zta }
+spec:
+  selector: { matchLabels: { app: fintech-api } }
+  action: DENY
+  rules:
+    - from: [{ source: { notRequestPrincipals: ["*"] } }]
+      to: [{ operation: { notPaths: ["/health", "/metrics"] } }]

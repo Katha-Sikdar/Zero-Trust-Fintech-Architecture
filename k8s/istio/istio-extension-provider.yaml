@@ -1,0 +1,14 @@
+# Patch to the istio-system mesh config declaring OPA as an ext_authz provider.
+# Apply with: kubectl -n istio-system edit configmap istio  (or istioctl install
+# with this overlay). Shown here for reference / IstioOperator overlay.
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata: { name: zta-extauthz, namespace: istio-system }
+spec:
+  meshConfig:
+    extensionProviders:
+      - name: opa-ext-authz-grpc
+        envoyExtAuthzGrpc:
+          service: opa.zta.svc.cluster.local
+          port: 9191
+          failOpen: false          # A10: flip to true for the fail-open arm

@@ -1,0 +1,19 @@
+# Istio ingress: expose the API through the mesh gateway.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata: { name: fintech-gw, namespace: zta }
+spec:
+  selector: { istio: ingressgateway }
+  servers:
+    - port: { number: 80, name: http, protocol: HTTP }
+      hosts: ["*"]
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: fintech-vs, namespace: zta }
+spec:
+  hosts: ["*"]
+  gateways: [fintech-gw]
+  http:
+    - route:
+        - destination: { host: fintech-api.zta.svc.cluster.local, port: { number: 8080 } }

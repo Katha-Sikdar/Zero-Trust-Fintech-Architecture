@@ -1,0 +1,49 @@
+# OPA as an Istio CUSTOM ext_authz provider (Scenario S5/S6): object/function
+# level authorization at the sidecar. Requires a matching extensionProvider in
+# the mesh config (see istio-extension-provider.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: opa, namespace: zta, labels: { app: opa } }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: opa } }
+  template:
+    metadata:
+      labels: { app: opa }
+      annotations: { sidecar.istio.io/inject: "false" }
+    spec:
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:0.68.0-envoy
+          args:
+            - "run"
+            - "--server"
+            - "--addr=0.0.0.0:8181"
+            - "--config-file=/config/opa-envoy-config.yaml"
+            - "/policy/authz.rego"
+          ports: [{ containerPort: 9191 }, { containerPort: 8181 }]
+          volumeMounts:
+            - { name: policy, mountPath: /policy }
+            - { name: config, mountPath: /config }
+      volumes:
+        - name: policy
+          configMap: { name: opa-policy }
+        - name: config
+          configMap: { name: opa-config }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: opa, namespace: zta }
+spec:
+  selector: { app: opa }
+  ports: [{ name: grpc, port: 9191, targetPort: 9191 }]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: opa-authz, namespace: zta }
+spec:
+  selector: { matchLabels: { app: fintech-api } }
+  action: CUSTOM
+  provider: { name: opa-ext-authz-grpc }
+  rules:
+    - to: [{ operation: { notPaths: ["/health", "/metrics"] } }]

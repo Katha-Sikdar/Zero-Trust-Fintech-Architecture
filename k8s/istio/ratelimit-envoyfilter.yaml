@@ -1,0 +1,26 @@
+# Local rate limit at the sidecar (API4 control; Scenario S6 adaptive limit).
+# token_bucket max/refill is the actuator the RQ3 model tunes toward lambda*.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata: { name: local-ratelimit, namespace: zta }
+spec:
+  workloadSelector: { labels: { app: fintech-api } }
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter: { name: "envoy.filters.network.http_connection_manager" }
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.local_ratelimit
+          typed_config:
+            "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+            type_url: type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+            value:
+              stat_prefix: http_local_rate_limiter
+              token_bucket: { max_tokens: 260, tokens_per_fill: 260, fill_interval: 1s }
+              filter_enabled:  { default_value: { numerator: 100, denominator: HUNDRED } }
+              filter_enforced: { default_value: { numerator: 100, denominator: HUNDRED } }

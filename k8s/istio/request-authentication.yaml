@@ -1,0 +1,14 @@
+# JWT validation at the sidecar (Scenario S4+). Istio's Envoy validates the
+# token against the local JWKS and rejects malformed/expired/wrong-key tokens
+# before they reach the app — the sidecar-offloading arm of RQ1.
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata: { name: jwt-at-sidecar, namespace: zta }
+spec:
+  selector: { matchLabels: { app: fintech-api } }
+  jwtRules:
+    - issuer: "zta-testbed"
+      forwardOriginalToken: true
+      outputPayloadToHeader: "x-jwt-payload"
+      # jwks is injected by scripts/k8s-setup.sh from envoy/jwks.json
+      jwksUri: "https://REPLACE_ME/.well-known/jwks.json"
