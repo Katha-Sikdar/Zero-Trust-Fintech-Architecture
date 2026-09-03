@@ -35,51 +35,92 @@ def fig_elbow(runs):
     ax.spines[["top","right"]].set_visible(False)
     synthetic_stamp(fig, runs); fig.tight_layout(); fig.savefig(f"{OUT}/figA_elbow.png"); plt.close(fig)
 
-# ---- Fig B: efficacy under load (RQ5) — S6 vs S6fo block rate + p99 ----
+# ---- Fig B: RQ5 — fail-open vs fail-closed under an OPA control-plane outage ----
 def fig_efficacy(runs, cells):
-    fig, ax = plt.subplots(figsize=(6,3.6))
-    for scn,c,ls in [("S6",GRN,"-"),("S6fo",RED,"--")]:
-        s = cells[(cells.scenario==scn)&(cells.risk=="A10")]
-        if s.empty: continue
-        g = s.groupby("load_norm").apply(lambda d: d.tp.sum()/max(1,(d.tp.sum()+d.fn.sum())))
-        ax.plot(g.index, g.values*100, color=c, lw=2, ls=ls, marker="o", ms=4,
-                label=f"{scn} A10 block rate")
-    ax.axvline(1.0, color=GREY, ls=":", lw=1); ax.text(1.02, 8, r"$\lambda^{*}$", color=GREY)
-    ax.axvspan(1.0, runs.load_norm.max(), color=RED, alpha=0.05)
-    ax.set_xlabel(r"Offered load / $\lambda^{*}$"); ax.set_ylabel("A10 block rate (%)")
-    ax.set_ylim(0,105); ax.legend(frameon=False, fontsize=8, loc="lower left")
-    ax.grid(color=LINE, lw=0.6, alpha=0.7); ax.set_axisbelow(True); ax.spines[["top","right"]].set_visible(False)
-    synthetic_stamp(fig, runs); fig.tight_layout(); fig.savefig(f"{OUT}/figB_failopen.png"); plt.close(fig)
+    """Under load alone the two policies are indistinguishable (the limiter sheds
+    before OPA saturates), so the informative contrast is the outage arm."""
+    # every arm read at the same load level: the outage arms were run at lambda*
+    # only, so pooling the healthy arms over all five levels would not compare like
+    # with like.
+    tgt = min(cells.load_norm.unique(), key=lambda x: abs(x-1.0))
+    cells = cells[np.isclose(cells.load_norm, tgt)]
+    def rates(scn):
+        s = cells[(cells.scenario == scn) & (cells.risk == "API1")]
+        if s.empty: return None
+        g = s.groupby("trial").agg(tp=("tp","sum"), fn=("fn","sum"),
+                                   fp=("fp","sum"), tn=("tn","sum"))
+        blk = (g.tp / (g.tp + g.fn).replace(0, np.nan)).mean()
+        fpr = (g.fp / (g.fp + g.tn).replace(0, np.nan)).mean()
+        return 100*blk, 100*fpr
+    arms = [("S6","fail-closed\nOPA healthy"), ("S6fo","fail-open\nOPA healthy"),
+            ("S6oc","fail-closed\nOPA DOWN"), ("S6fooc","fail-open\nOPA DOWN")]
+    got = [(lab, rates(scn)) for scn, lab in arms]
+    got = [(lab, r) for lab, r in got if r]
+    if not got: return
+    fig, ax = plt.subplots(figsize=(6.4,3.6))
+    x = np.arange(len(got)); w = 0.38
+    ax.bar(x - w/2, [r[0] for _, r in got], w, color=GRN, label="BOLA attacks blocked")
+    ax.bar(x + w/2, [r[1] for _, r in got], w, color=RED, label="benign traffic denied (FPR)")
+    for i, (_, r) in enumerate(got):
+        ax.text(i - w/2, r[0] + 2, f"{r[0]:.0f}", ha="center", fontsize=8)
+        ax.text(i + w/2, r[1] + 2, f"{r[1]:.0f}", ha="center", fontsize=8)
+    ax.set_xticks(x); ax.set_xticklabels([lab for lab, _ in got], fontsize=8)
+    ax.set_ylabel("percent"); ax.set_ylim(0, 118)
+    ax.legend(frameon=False, fontsize=8, ncol=2, loc="upper left")
+    ax.grid(axis="y", color=LINE, lw=0.6, alpha=0.7); ax.set_axisbelow(True)
+    ax.spines[["top","right"]].set_visible(False)
+    synthetic_stamp(fig, runs); fig.tight_layout()
+    fig.savefig(f"{OUT}/figB_failopen.png"); plt.close(fig)
 
 # ---- Fig C: security-performance frontier ----
 def fig_frontier(runs, cells):
-    fig, ax = plt.subplots(figsize=(6,3.8))
-    base_p99 = runs[(runs.scenario=="S0")].groupby("load_norm")["p99_ms"].median()
-    pts=[]
-    for scn in ["S0","S1","S2","S3","S4","S5","S6"]:
-        rr = runs[(runs.scenario==scn)]
-        cc = cells[(cells.scenario==scn)]
+    """x is the SIGNED delta against S0rl (no enforcement, same 200 r/s limiter).
+    Signed, because sidecar enforcement rejects bad traffic before the backend and
+    can lower p99; matched, because a delta against unlimited S0 would measure the
+    rate limiter rather than the enforcement point."""
+    fig, ax = plt.subplots(figsize=(6.4,3.9))
+    ref = runs[runs.scenario == "S0rl"]
+    if ref.empty: ref = runs[runs.scenario == "S0"]
+    tgt_ref = min(ref.load_norm.unique(), key=lambda x: abs(x-1.0))
+    base = ref[np.isclose(ref.load_norm, tgt_ref)]["p99_ms"].median()
+    pts = []
+    for scn in ["S0","S0rl","S1","S2","S3","S3off","S4","S4es","S5","S6","S6fo"]:
+        rr = runs[runs.scenario == scn]; cc = cells[cells.scenario == scn]
         if rr.empty or cc.empty: continue
-        # near-elbow slice
-        target = min(rr.load_norm.unique(), key=lambda x: abs(x-1.0))
-        p99 = rr[np.isclose(rr.load_norm,target)]["p99_ms"].median()
-        b = base_p99.get(target, base_p99.median())
-        added = max(0.0, p99 - b)
-        cov = cc[np.isclose(cc.load_norm,target)]
+        t = min(rr.load_norm.unique(), key=lambda x: abs(x-1.0))
+        p99 = rr[np.isclose(rr.load_norm, t)]["p99_ms"].median()
+        cov = cc[np.isclose(cc.load_norm, t)]
         coverage = 100*cov.tp.sum()/max(1,(cov.tp.sum()+cov.fn.sum()))
-        pts.append((scn, added, coverage))
-    for scn,x,y in pts:
-        c = RED if scn=="S6" else GRN if scn in("S4","S5") else AMB if scn=="S3" else ACC
-        ax.scatter([x],[y], s=52, color=c, zorder=3, edgecolor="white")
-        ax.annotate(f"{scn}", (x,y), textcoords="offset points", xytext=(7,-3), fontsize=8)
-    ax.set_xlabel("Added p99 over baseline (ms)"); ax.set_ylabel("OWASP risk coverage (%)")
-    ax.set_ylim(-5,105); ax.grid(color=LINE, lw=0.6, alpha=0.7); ax.set_axisbelow(True)
+        pts.append((scn, p99 - base, coverage))
+    # S2 (+150 ms) would compress every other point onto a single vertical line,
+    # so it is drawn clamped at the right edge with its true value in the label.
+    finite = [p[1] for p in pts if abs(p[1]) < 50]
+    xmax = max(finite) + 3.5; xmin = min(finite) - 2.0
+    off = {"S0":(7,4),"S0rl":(7,-11),"S1":(7,-11),"S3":(7,5),"S3off":(7,-11),
+           "S4":(7,4),"S4es":(7,-11),"S5":(-30,7),"S6":(7,5),"S6fo":(7,-11)}
+    for scn, x, y in pts:
+        clipped = x > xmax
+        xp = xmax if clipped else x
+        c = RED if scn.startswith("S6") else GRN if scn.startswith(("S4","S5")) \
+            else AMB if scn.startswith("S3") else ACC
+        ax.scatter([xp], [y], s=54, color=c, zorder=3, edgecolor="white",
+                   marker=">" if clipped else "o")
+        lab = f"{scn} (+{x:.0f} ms)" if clipped else scn
+        ax.annotate(lab, (xp, y), textcoords="offset points",
+                    xytext=off.get(scn, (7,-3)), fontsize=8)
+    ax.axvline(0, color=GREY, ls=":", lw=1)
+    ax.text(0.15, 3, "no latency cost", color=GREY, fontsize=7.5, rotation=90, va="bottom")
+    ax.set_xlim(xmin, xmax + 1.2)
+    ax.set_xlabel(r"$\Delta$ p99 vs rate-limit-matched baseline S0rl (ms)")
+    ax.set_ylabel("OWASP risk coverage (%)")
+    ax.set_ylim(-6,106); ax.grid(color=LINE, lw=0.6, alpha=0.7); ax.set_axisbelow(True)
     ax.spines[["top","right"]].set_visible(False)
-    synthetic_stamp(fig, runs); fig.tight_layout(); fig.savefig(f"{OUT}/figC_frontier.png"); plt.close(fig)
+    synthetic_stamp(fig, runs); fig.tight_layout()
+    fig.savefig(f"{OUT}/figC_frontier.png"); plt.close(fig)
 
 # ---- Fig D: per-risk block rate by scenario (near elbow) ----
 def fig_perrisk(runs, cells):
-    scen=["S0","S3","S4","S5","S6"]; risks=["API1","API2","API4","API5","API8","A10"]
+    scen=["S0","S0rl","S3","S3off","S4","S5","S6"]; risks=["API1","API2","API4","API5","API8","A10"]
     target = min(cells.load_norm.unique(), key=lambda x: abs(x-1.0))
     M=np.zeros((len(scen),len(risks)))
     for i,s in enumerate(scen):

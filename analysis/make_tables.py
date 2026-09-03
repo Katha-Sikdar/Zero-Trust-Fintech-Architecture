@@ -10,16 +10,22 @@ def main():
 
     # Table: coverage + cost per scenario near the elbow
     rows=[]
-    base = runs[(runs.scenario=="S0")]
+    # Baseline is S0rl (no enforcement, but the SAME gateway rate limit as
+    # S3-S5), not S0. S0 admits all offered load while the enforcement scenarios
+    # shed at 200 r/s, so a delta against S0 measures the limiter, not the
+    # enforcement point. S0/S1/S2 are unlimited and their delta is not comparable.
+    base = runs[(runs.scenario=="S0rl")]
+    if base.empty:
+        base = runs[(runs.scenario=="S0")]
     base_p99 = base[np.isclose(base.load_norm,target)]["p99_ms"].median()
-    for scn in ["S0","S1","S2","S3","S4","S5","S6"]:
+    for scn in ["S0","S0rl","S1","S2","S3","S3off","S4","S4es","S5","S6","S6fo"]:
         rr=runs[(runs.scenario==scn)&(np.isclose(runs.load_norm,target))]
         cc=cells[(cells.scenario==scn)&(np.isclose(cells.load_norm,target))]
         if rr.empty: continue
         n=cc.tp.sum()+cc.fn.sum()
         rows.append(dict(scenario=scn,
             p50_ms=round(rr.p50_ms.median(),2), p99_ms=round(rr.p99_ms.median(),2),
-            added_p99_ms=round(max(0,rr.p99_ms.median()-base_p99),2),
+            added_p99_ms=round(rr.p99_ms.median()-base_p99,2),   # signed: may be negative
             coverage_pct=round(100*cc.tp.sum()/max(1,n),1),
             fpr_pct=round(100*cc.fp.sum()/max(1,(cc.fp.sum()+cc.tn.sum())),2)))
     t=pd.DataFrame(rows)
@@ -38,7 +44,7 @@ def main():
     # per-scenario confusion matrix
     md += ["## Confusion matrix per scenario (summed over risks, near elbow)","",
            "| scenario | TP | FP | TN | FN | block rate | FPR |","|---|---|---|---|---|---|---|"]
-    for scn in ["S0","S3","S4","S5","S6","S6fo"]:
+    for scn in ["S0","S0rl","S3","S3off","S4","S4es","S5","S6","S6fo"]:
         cc=cells[(cells.scenario==scn)&(np.isclose(cells.load_norm,target))]
         if cc.empty: continue
         tp,fp,tn,fn=cc.tp.sum(),cc.fp.sum(),cc.tn.sum(),cc.fn.sum()

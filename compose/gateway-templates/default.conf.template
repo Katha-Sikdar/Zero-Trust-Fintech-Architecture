@@ -7,13 +7,21 @@ upstream mesh { server ${MESH_UPSTREAM}; keepalive 128; }
 
 server {
     listen 8081;                 # plaintext (deterministic latency measurement)
+
+    # Server scope, not just `location /`: nginx proxies as HTTP/1.0 by default,
+    # and Envoy answers HTTP/1.0 with 426 Upgrade Required. With MESH_UPSTREAM
+    # pointing at the sidecar (S4/S4es/S5/S6/S6fo) that turned /health into a
+    # permanent 426, so wait-healthy.sh timed out and those scenarios never ran
+    # -- while the data path, which did set 1.1, worked fine. Keepalive to the
+    # upstream also depends on 1.1 + an empty Connection header.
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+
     location /health  { proxy_pass http://mesh; }
     location /metrics { proxy_pass http://mesh; }
     location / {
         limit_req zone=api burst=${NGINX_BURST} nodelay;
         proxy_pass http://mesh;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
         proxy_set_header Host $host;
         proxy_set_header Authorization $http_authorization;
     }

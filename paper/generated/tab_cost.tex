@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Security coverage versus latency cost at the elbow. Coverage and FPR are pooled over risks and trials (descriptive point estimates); interval estimates are in Table~\ref{tab:blockrates}.}
+\label{tab:cost}
+\small
+\begin{tabular}{llrrrrr}
+\toprule
+ID & Description & $p_{50}$ & $p_{99}$ & $\Delta p_{99}$ & Coverage (\%) & FPR (\%) \\
+\midrule
+S0 & Baseline & 2.39 & 14.35 & 3.14 & 0.0 & 0.00 \\
+S0rl & Baseline + rate limit & 2.46 & 11.21 & 0.00 & 14.6 & 25.43 \\
+S1 & Edge TLS & 2.39 & 14.03 & 2.83 & 0.0 & 0.00 \\
+S2 & Full mTLS & 3.45 & 161.86 & 150.65 & 0.0 & 0.00 \\
+S3 & App-layer JWT & 2.49 & 15.23 & 4.03 & 85.2 & 25.43 \\
+S3off & App JWT+worker & 2.52 & 17.58 & 6.37 & 85.2 & 25.43 \\
+S4 & Sidecar JWT & 2.56 & 8.21 & -3.00 & 34.5 & 25.48 \\
+S4es & Sidecar JWT ES256 & 2.54 & 8.19 & -3.02 & 34.5 & 25.51 \\
+S5 & Sidecar+OPA & 2.94 & 10.31 & -0.89 & 85.2 & 25.50 \\
+S6 & S6 adaptive RL & 3.04 & 16.62 & 5.41 & 82.8 & 5.89 \\
+S6fo & S6 fail-open & 3.04 & 16.74 & 5.53 & 82.8 & 5.90 \\
+\bottomrule
+\end{tabular}
+\end{table}

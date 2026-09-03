@@ -106,16 +106,17 @@ export function handleSummary(data) {
       block_rate: attacks ? tp / attacks : null,          // recall on attacks
       false_positive_rate: benign ? fp / benign : null,   // benign wrongly blocked
       attacks_sent: attacks, benign_sent: benign,
-      p95_latency_ms: (m[`lat_${r}`] && m[`lat_${r}`].values['p(95)']) || null,
+      p95_latency_ms: (m[`lat_${r}`] && m[`lat_${r}`].values['p(95)']) ?? null,
     };
   }
   const out = {
     scenario: SCENARIO, load_rps: RPS, jwt_alg: ALG,
     duration: DURATION, attack_fraction: ATTACK_FRACTION,
     http_reqs: val('http_reqs'),
-    p50_ms: (m.http_req_duration && m.http_req_duration.values.med) || null,
-    p95_ms: (m.http_req_duration && m.http_req_duration.values['p(95)']) || null,
-    p99_ms: (m.http_req_duration && m.http_req_duration.values['p(99)']) || null,
+    // `??` not `||`: a genuine 0 ms percentile is data, not a missing value.
+    p50_ms: (m.http_req_duration && m.http_req_duration.values.med) ?? null,
+    p95_ms: (m.http_req_duration && m.http_req_duration.values['p(95)']) ?? null,
+    p99_ms: (m.http_req_duration && m.http_req_duration.values['p(99)']) ?? null,
     dropped_iterations: val('dropped_iterations'),
     matrix,
     ts: new Date().toISOString(),

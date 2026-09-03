@@ -9,6 +9,7 @@ SCENARIO_LABELS = {
     "S0": "Baseline", "S1": "Edge TLS", "S2": "Full mTLS",
     "S3": "App-layer JWT", "S4": "Sidecar JWT", "S5": "Sidecar+OPA",
     "S6": "S6 adaptive RL", "S6fo": "S6 fail-open", "S3off": "App JWT+worker",
-    "S4es": "Sidecar JWT ES256",
+    "S4es": "Sidecar JWT ES256", "S0rl": "Baseline + rate limit",
+    "S6oc": "S6 fail-closed, OPA outage", "S6fooc": "S6 fail-open, OPA outage",
 }
 NOMINAL_LAMBDA = 220        # fallback global elbow if elbow.py has not run

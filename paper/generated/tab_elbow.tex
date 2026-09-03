@@ -1,0 +1,25 @@
+\begin{table}[t]
+\centering
+\caption{Per-scenario saturation elbow. The operational elbow is the lowest offered load at which median $p_{99}$ exceeds twice the low-load baseline; ``not reached'' means the sweep grid never crossed that threshold, and the elbow is therefore unestimable from this data rather than located at the grid edge.}
+\label{tab:elbow}
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+Scenario & Baseline $p_{99}$ (ms) & Elbow (rps) & $\hat{\mu}$ (rps) & Max $p_{99}$ (ms) & Data \\
+\midrule
+S0 & 4.63 & 250 & 225 & 96.7 & measured \\
+S0rl & 4.90 & 250 & 225 & 11.2 & measured \\
+S1 & 4.11 & 250 & 225 & 96.9 & measured \\
+S2 & 4.35 & 225 & 125 & 4488.1 & measured \\
+S3 & 5.06 & 250 & 225 & 15.2 & measured \\
+S3off & 5.11 & 250 & 225 & 17.6 & measured \\
+S4 & 5.19 & not reached & 225 & 8.2 & measured \\
+S4es & 5.08 & not reached & 225 & 8.2 & measured \\
+S5 & 6.07 & not reached & 225 & 10.3 & measured \\
+S6 & 6.27 & 250 & 225 & 35.5 & measured \\
+S6fo & 6.24 & 250 & 225 & 34.1 & measured \\
+S6fooc & -- & not reached & -- & -- & measured \\
+S6oc & -- & not reached & -- & -- & measured \\
+\bottomrule
+\end{tabular}
+\end{table}

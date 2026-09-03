@@ -16,3 +16,7 @@ results/lambda_star.txt
 !docs/**
 tools/
 k8s/istio/request-authentication.rendered.yaml
+
+# python bytecode
+__pycache__/
+*.pyc

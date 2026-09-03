@@ -1,0 +1,81 @@
+{
+  "scenario": "S3off",
+  "load_rps": 297,
+  "jwt_alg": "RS256",
+  "duration": "60s",
+  "attack_fraction": 0.4,
+  "http_reqs": 21501,
+  "p50_ms": 1.062,
+  "p95_ms": 3.1,
+  "p99_ms": null,
+  "dropped_iterations": 0,
+  "matrix": {
+    "API1": {
+      "tp": 1200,
+      "fp": 2864,
+      "tn": 1536,
+      "fn": 0,
+      "block_rate": 1,
+      "false_positive_rate": 0.6509090909090909,
+      "attacks_sent": 1200,
+      "benign_sent": 4400,
+      "p95_latency_ms": 2.9020999999999995
+    },
+    "API2": {
+      "tp": 1000,
+      "fp": 1202,
+      "tn": 4078,
+      "fn": 0,
+      "block_rate": 1,
+      "false_positive_rate": 0.22765151515151516,
+      "attacks_sent": 1000,
+      "benign_sent": 5280,
+      "p95_latency_ms": 3.36905
+    },
+    "API4": {
+      "tp": 431,
+      "fp": 783,
+      "tn": 1717,
+      "fn": 1069,
+      "block_rate": 0.28733333333333333,
+      "false_positive_rate": 0.3132,
+      "attacks_sent": 1500,
+      "benign_sent": 2500,
+      "p95_latency_ms": 3.132
+    },
+    "API5": {
+      "tp": 1500,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "block_rate": 1,
+      "false_positive_rate": null,
+      "attacks_sent": 1500,
+      "benign_sent": 0,
+      "p95_latency_ms": 2.203549999999999
+    },
+    "API8": {
+      "tp": 1300,
+      "fp": 478,
+      "tn": 1043,
+      "fn": 0,
+      "block_rate": 1,
+      "false_positive_rate": 0.314266929651545,
+      "attacks_sent": 1300,
+      "benign_sent": 1521,
+      "p95_latency_ms": 2.831
+    },
+    "A10": {
+      "tp": 1300,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "block_rate": 1,
+      "false_positive_rate": null,
+      "attacks_sent": 1300,
+      "benign_sent": 0,
+      "p95_latency_ms": 1.877899999999999
+    }
+  },
+  "ts": "2026-09-02T17:20:47.985Z"
+}

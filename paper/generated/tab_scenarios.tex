@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Scenario matrix. JWT and authorization columns give the enforcement point; the independent variable of the study.}
+\label{tab:scenarios}
+\small
+\begin{tabular}{llllll}
+\toprule
+ID & Description & JWT at & Authz at & Rate limit (rps) & Notes \\
+\midrule
+S0 & Baseline & -- & -- & -- & -- \\
+S1 & Edge TLS & -- & -- & -- & -- \\
+S2 & Full mTLS & -- & -- & -- & -- \\
+S3 & App-layer JWT & app & app & 200 & -- \\
+S4 & Sidecar JWT & sidecar & -- & 200 & -- \\
+S5 & Sidecar+OPA & sidecar & OPA & 200 & -- \\
+S6 & S6 adaptive RL & sidecar & OPA & 260 & -- \\
+S0rl & Baseline + rate limit & -- & -- & 200 & -- \\
+S3off & App JWT+worker & app & app & 200 & worker offload \\
+S4es & Sidecar JWT ES256 & sidecar & -- & 200 & ES256 \\
+S6fo & S6 fail-open & sidecar & OPA & 260 & fail-open \\
+\bottomrule
+\end{tabular}
+\end{table}
