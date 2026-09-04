@@ -12,7 +12,7 @@ def main():
     rows=[]
     # Baseline is S0rl (no enforcement, but the SAME gateway rate limit as
     # S3-S5), not S0. S0 admits all offered load while the enforcement scenarios
-    # shed at 200 r/s, so a delta against S0 measures the limiter, not the
+    # shed above the derived limit, so a delta against S0 measures the limiter, not the
     # enforcement point. S0/S1/S2 are unlimited and their delta is not comparable.
     base = runs[(runs.scenario=="S0rl")]
     if base.empty:

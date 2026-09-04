@@ -74,7 +74,7 @@ def fig_efficacy(runs, cells):
 
 # ---- Fig C: security-performance frontier ----
 def fig_frontier(runs, cells):
-    """x is the SIGNED delta against S0rl (no enforcement, same 200 r/s limiter).
+    """x is the SIGNED delta against S0rl (no enforcement, same rate limiter).
     Signed, because sidecar enforcement rejects bad traffic before the backend and
     can lower p99; matched, because a delta against unlimited S0 would measure the
     rate limiter rather than the enforcement point."""

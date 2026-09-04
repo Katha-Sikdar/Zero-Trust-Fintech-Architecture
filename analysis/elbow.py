@@ -107,6 +107,26 @@ def main():
         lstar, source = float(med), "median of estimable scenario elbows"
 
     path = "results/lambda_star.txt"
+
+    # A CALIBRATED lambda* is authoritative and must not be overwritten here.
+    # results/lambda_star.measured.txt is written by `make calibrate`, which
+    # measures S0 with the rate limiter forced OFF -- the service's own capacity.
+    # Re-deriving lambda* from the swept S6 data instead would be circular: the
+    # calibrated lambda* sets S6's NGINX_RATE, that limiter shapes S6's latency
+    # curve, and the resulting "elbow" is an artefact of the limiter rather than
+    # of capacity. Worse, it silently re-scales load_norm underneath every table,
+    # moving what counts as "the elbow" after the sweep was already run against
+    # the calibrated value. The per-scenario fits still go to elbow_table.csv.
+    measured_path = "results/lambda_star.measured.txt"
+    if os.path.exists(measured_path):
+        cal = open(measured_path).read().strip()
+        print(f"\nlambda* = {cal} rps (MEASURED by `make calibrate`; kept). "
+              f"This run's S6-derived fit was "
+              f"{int(lstar) if np.isfinite(lstar) else 'unestimable'} rps and is "
+              f"reported in results/elbow_table.csv only -- re-deriving it from "
+              f"rate-limited sweep data would be circular.")
+        return
+
     if not np.isfinite(lstar):
         print(f"\nWARNING: lambda* is not estimable from this data.", file=sys.stderr)
         if os.path.exists(path):

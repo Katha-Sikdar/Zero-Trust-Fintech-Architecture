@@ -12,6 +12,9 @@ results/*.md
 results/*.csv
 results/figures/
 results/lambda_star.txt
+results/lambda_star.measured.txt
+results/.sweep.lock
+results/calibration/
 !results/example-output/**
 !docs/**
 tools/

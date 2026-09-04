@@ -13,23 +13,50 @@ Inspect `results/stats_report.md`, `results/tables.md`, `results/figures/`.
 
 ## 2. First real run (Compose)
 
-**Move any synthetic data out of `results/` first.** `ingest.py` reads every
-`summary_*.json` in that directory, so a leftover synthetic corpus is silently
-averaged into the measured one and stamps every table SYNTHETIC:
+**Move any synthetic data out of `results/` first.** `ingest.py` now REFUSES to
+run on a directory holding both kinds (real runs have no `"synthetic": true`
+field, synthetic ones do), rather than silently averaging them together:
 ```bash
 mkdir -p results/synthetic-archive && mv results/summary_*.json results/synthetic-archive/
 rm -f results/lambda_star.txt      # a synthetic lambda* must not drive a measured sweep
 ```
 
+Then run the four steps **in this order**. The order is the point: lambda* must be
+MEASURED before it can set the rate limits, and the rate limits must be set before
+the sweep, or the sweep inherits whatever lambda* happened to be lying around.
+
 ```bash
 make tokens           # keys + JWKS + attack corpus
-# calibrate the elbow with a quick baseline sweep:
-make run-S0 N=5
-python3 analysis/elbow.py          # writes results/lambda_star.txt
-# CHECK: elbow_table.csv must show status "ok" for S0. "no elbow in tested
-# range" means the load ceiling is below saturation -- widen it (see
-# Troubleshooting) before spending hours on the graded sweep.
-# now the graded sweep for the scenarios you care about:
+make calibrate        # 1. measure lambda* from real S0 data
+make rate-limits      # 2. derive NGINX_RATE/NGINX_BURST from that lambda*
+make all-compose N=30 # 3. the graded sweep (hours, depending on N)
+make check            # 4. one-screen PASS/FAIL on the result
+```
+
+`make calibrate` sweeps S0 across a wide load grid with the gateway rate limiter
+forced OFF, fits the elbow, and prints the measured lambda*. It refuses to report
+a number when the grid missed the elbow, and names which way to move:
+
+* *"no elbow in the tested range"* — the service never saturated. Raise
+  `APP_BUSINESS_CPU_MS` in `compose/scenarios/*.env`, or extend the grid upward.
+* *"the grid starts PAST the elbow"* — every point is already queueing. Lower
+  `APP_BUSINESS_CPU_MS`, or extend the grid downward.
+* *"the p99 BASELINE is contaminated"* — a partially-queueing point got into the
+  lowest third of the grid, which is what elbow.py averages for its baseline.
+  Add resolution below the knee.
+
+Override the grid when the service speed changes:
+```bash
+make calibrate LOADS="100 200 400 800 1200 1800 2600"
+```
+
+Calibration runs are archived to `results/calibration/` afterwards and are never
+ingested: the limiter was off and the grid runs far outside the sweep's
+0.5-1.5 x lambda* range, so pooling them with the sweep would corrupt S0.
+
+To run individual scenarios instead of the full matrix (after `make calibrate`
+and `make rate-limits`):
+```bash
 make run-S3 N=30
 make run-S4 N=30
 make run-S5 N=30
@@ -41,7 +68,8 @@ make analyse
 
 ## 3. Full Compose matrix (unattended)
 ```bash
-make all-compose N=30      # S0..S6 + arms, then analyse. Hours, depending on N.
+make all-compose N=30      # S0..S6 + S0rl + arms, then analyse. Hours, depending on N.
+make check                 # PASS/FAIL: MEASURED provenance, FPR < 2%, block pattern
 ```
 
 ## 4. Istio / EKS
